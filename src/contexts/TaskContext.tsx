@@ -1,11 +1,57 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import { Task } from '../models/Task';
 import Toast from 'react-native-toast-message';
+import { getData, saveData } from '../utils/storage';
 
 export const TaskContext = createContext<any>(null);
 
 export const TaskProvider: React.FC<any> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  const STORAGE_KEY = 'TASKS_STORAGE_V1';
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const stored = await getData(STORAGE_KEY);
+        if (stored && Array.isArray(stored)) {
+          setTasks(stored);
+        }
+      } catch {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not load tasks',
+          text2: 'Using a fresh list for now',
+          position: 'top',
+          visibilityTime: 2500,
+        });
+      } finally {
+        setInitialized(true);
+      }
+    };
+
+    loadTasks();
+  }, []);
+
+  useEffect(() => {
+    if (!initialized) return;
+
+    const persist = async () => {
+      try {
+        await saveData(STORAGE_KEY, tasks);
+      } catch {
+        Toast.show({
+          type: 'error',
+          text1: 'Could not save tasks',
+          position: 'top',
+          visibilityTime: 2000,
+        });
+      }
+    };
+
+    persist();
+  }, [tasks, initialized]);
 
   const addTask = (task: Task) => {
     setTasks(prev => [...prev, task]);

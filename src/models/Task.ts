@@ -3,7 +3,8 @@ export type Task = {
   title: string;
   description: string;
   createdAt: string;
-  deadline: string;
+  dueDate?: string;
   priority: 'High' | 'Medium' | 'Low';
   completed: boolean;
+  tags?: string[];
 };

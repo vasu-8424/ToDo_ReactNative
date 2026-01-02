@@ -11,26 +11,57 @@ import {
 } from 'react-native';
 import { TaskContext } from '../contexts/TaskContext';
 import { colors, commonStyles } from '../styles/commonStyles';
+import Toast from 'react-native-toast-message';
 
 export default function AddTaskScreen({ navigation }: any) {
   const { addTask } = useContext(TaskContext);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Low');
+  const [dueDateInput, setDueDateInput] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
+
+  const setQuickDate = (daysFromNow: number) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + daysFromNow);
+    setDueDateInput(date.toISOString().slice(0, 10));
+  };
 
   const submit = () => {
     if (!title.trim()) {
       return;
     }
+
+    let dueDate: string | undefined;
+    if (dueDateInput.trim()) {
+      const parsed = new Date(dueDateInput);
+      if (isNaN(parsed.getTime())) {
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid date',
+          text2: 'Use format YYYY-MM-DD',
+          position: 'top',
+        });
+        return;
+      }
+      dueDate = parsed.toISOString();
+    }
+
+    const tags = tagsInput
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(Boolean);
     
     addTask({
       id: Date.now().toString(),
       title,
       description,
       createdAt: new Date().toISOString(),
-      deadline: new Date().toISOString(),
+      dueDate,
       priority,
       completed: false,
+      tags,
     });
     navigation.goBack();
   };
@@ -93,6 +124,47 @@ export default function AddTaskScreen({ navigation }: any) {
                   </Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            <Text style={styles.priorityLabel}>Due date (optional)</Text>
+            <View style={styles.quickDatesRow}>
+              {[0, 1, 7].map(offset => (
+                <TouchableOpacity
+                  key={offset}
+                  style={styles.quickDateChip}
+                  onPress={() => setQuickDate(offset)}
+                >
+                  <Text style={styles.quickDateText}>
+                    {offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : 'Next Week'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.quickDateChip, styles.clearChip]}
+                onPress={() => setDueDateInput('')}
+              >
+                <Text style={[styles.quickDateText, styles.clearText]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={commonStyles.inputContainer}>
+              <TextInput
+                style={commonStyles.input}
+                placeholder="YYYY-MM-DD (optional)"
+                placeholderTextColor={colors.gray}
+                value={dueDateInput}
+                onChangeText={setDueDateInput}
+              />
+            </View>
+
+            <Text style={styles.priorityLabel}>Tags (comma separated)</Text>
+            <View style={commonStyles.inputContainer}>
+              <TextInput
+                style={commonStyles.input}
+                placeholder="e.g. Work, Errand, School"
+                placeholderTextColor={colors.gray}
+                value={tagsInput}
+                onChangeText={setTagsInput}
+              />
             </View>
           </View>
 
@@ -183,6 +255,32 @@ const styles = StyleSheet.create({
   },
   priorityTextActive: {
     color: colors.black,
+  },
+  quickDatesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  quickDateChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  quickDateText: {
+    color: colors.black,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  clearChip: {
+    borderColor: colors.error,
+  },
+  clearText: {
+    color: colors.error,
   },
   cancelButton: {
     paddingVertical: 15,

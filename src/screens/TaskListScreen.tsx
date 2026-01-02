@@ -1,18 +1,30 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { 
   View, 
   Text, 
   TouchableOpacity, 
   StyleSheet,
-  ScrollView 
+  ScrollView,
+  TextInput 
 } from 'react-native';
 import { TaskContext } from '../contexts/TaskContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { colors } from '../styles/commonStyles';
+import { Task } from '../models/Task';
+
+const priorityOrder: Record<Task['priority'], number> = {
+  High: 0,
+  Medium: 1,
+  Low: 2,
+};
 
 export default function TaskListScreen({ navigation }: any) {
   const { tasks, toggleTask, deleteTask } = useContext(TaskContext);
   const { logout, user, userName } = useContext(AuthContext);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
+  const [tagQuery, setTagQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'smart' | 'created'>('smart');
 
   // Get current time and greeting
   const getGreeting = () => {
@@ -28,6 +40,58 @@ export default function TaskListScreen({ navigation }: any) {
       return userName.split(' ')[0];
     }
     return user?.split('@')[0] || 'User';
+  };
+
+  const filteredTasks = useMemo(() => {
+    let list: Task[] = [...tasks];
+
+    if (statusFilter === 'active') {
+      list = list.filter(t => !t.completed);
+    } else if (statusFilter === 'completed') {
+      list = list.filter(t => t.completed);
+    }
+
+    if (priorityFilter !== 'All') {
+      list = list.filter(t => t.priority === priorityFilter);
+    }
+
+    if (tagQuery.trim()) {
+      const query = tagQuery.trim().toLowerCase();
+      list = list.filter(t => (t.tags ?? []).some((tag: string) => tag.toLowerCase().includes(query)));
+    }
+
+    const parseDate = (value?: string) => {
+      if (!value) return Number.POSITIVE_INFINITY;
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
+    };
+
+    list.sort((a, b) => {
+      if (sortMode === 'created') {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1; // incomplete first
+      }
+
+      const dueDiff = parseDate(a.dueDate) - parseDate(b.dueDate);
+      if (dueDiff !== 0) return dueDiff;
+
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return list;
+  }, [tasks, statusFilter, priorityFilter, tagQuery, sortMode]);
+
+  const formatDueDate = (value?: string) => {
+    if (!value) return 'No due date';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'No due date';
+    return parsed.toLocaleDateString();
   };
 
   return (
@@ -77,15 +141,92 @@ export default function TaskListScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.filterContainer}>
+          <View style={styles.filterRow}>
+            {['all', 'active', 'completed'].map((status) => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.filterChip,
+                  statusFilter === status && styles.filterChipActive
+                ]}
+                onPress={() => setStatusFilter(status as any)}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  statusFilter === status && styles.filterChipTextActive
+                ]}>
+                  {status === 'all' ? 'All' : status === 'active' ? 'Active' : 'Done'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.filterRow}>
+            {(['All', 'High', 'Medium', 'Low'] as const).map((p) => (
+              <TouchableOpacity
+                key={p}
+                style={[styles.filterChip, priorityFilter === p && styles.filterChipActive]}
+                onPress={() => setPriorityFilter(p)}
+              >
+                <Text style={[styles.filterChipText, priorityFilter === p && styles.filterChipTextActive]}>
+                  {p === 'All' ? 'Any Priority' : p}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.filterRow}>
+            {(['smart', 'created'] as const).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[styles.filterChip, sortMode === mode && styles.filterChipActive]}
+                onPress={() => setSortMode(mode)}
+              >
+                <Text style={[styles.filterChipText, sortMode === mode && styles.filterChipTextActive]}>
+                  {mode === 'smart' ? 'Smart Sort' : 'Newest'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.tagFilterRow}>
+            <TextInput
+              style={styles.tagInput}
+              placeholder="Filter by tag (e.g. Work)"
+              placeholderTextColor={colors.gray}
+              value={tagQuery}
+              onChangeText={setTagQuery}
+            />
+            <TouchableOpacity style={styles.clearButton} onPress={() => {
+              setTagQuery('');
+              setPriorityFilter('All');
+              setStatusFilter('all');
+              setSortMode('smart');
+            }}>
+              <Text style={styles.clearButtonText}>Reset</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Daily Task Section */}
         <View style={styles.dailyTaskCard}>
           <Text style={styles.dailyTaskTitle}>Daily Task</Text>
           
           <ScrollView style={styles.taskListContainer} showsVerticalScrollIndicator={false}>
-            {tasks.length === 0 ? (
-              <Text style={styles.noTaskText}>No tasks yet. Add your first task!</Text>
+            {filteredTasks.length === 0 ? (
+              <Text style={styles.noTaskText}>
+                {tasks.length === 0 ? 'No tasks yet. Add your first task!' : 'No tasks match the current filters.'}
+              </Text>
             ) : (
-              tasks.map((item: any) => (
+              filteredTasks.map((item: any) => {
+                const priorityStyle = item.priority === 'High'
+                  ? styles.priorityHigh
+                  : item.priority === 'Medium'
+                    ? styles.priorityMedium
+                    : styles.priorityLow;
+
+                return (
                 <View key={item.id} style={styles.taskItem}>
                   <TouchableOpacity 
                     style={styles.checkboxContainer}
@@ -106,9 +247,21 @@ export default function TaskListScreen({ navigation }: any) {
                     ]}>
                       {item.title}
                     </Text>
-                    {item.priority && (
-                      <Text style={styles.taskPriority}>Priority: {item.priority}</Text>
-                    )}
+                    <View style={styles.metaRow}>
+                      <Text style={styles.dueText}>{formatDueDate(item.dueDate)}</Text>
+                      <View style={[styles.priorityPill, priorityStyle]}>
+                        <Text style={styles.priorityPillText}>{item.priority}</Text>
+                      </View>
+                    </View>
+                    {item.tags?.length ? (
+                      <View style={styles.tagRow}>
+                        {item.tags.map((tag: string) => (
+                          <View key={tag} style={styles.tagChip}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
 
                   <TouchableOpacity 
@@ -118,7 +271,8 @@ export default function TaskListScreen({ navigation }: any) {
                     <Text style={styles.deleteButtonText}>×</Text>
                   </TouchableOpacity>
                 </View>
-              ))
+              );
+            })
             )}
           </ScrollView>
         </View>
@@ -295,6 +449,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  filterContainer: {
+    marginBottom: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 6,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    color: colors.black,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  filterChipTextActive: {
+    color: colors.white,
+  },
+  tagFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  tagInput: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.gray,
+    marginRight: 10,
+    color: colors.black,
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+  },
+  clearButtonText: {
+    color: colors.black,
+    fontWeight: '700',
+    fontSize: 12,
+  },
   taskListTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -386,10 +597,52 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: colors.gray,
   },
-  taskPriority: {
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  dueText: {
     fontSize: 12,
     color: colors.gray,
-    marginTop: 2,
+  },
+  priorityPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  priorityHigh: {
+    backgroundColor: '#FFE1E1',
+  },
+  priorityMedium: {
+    backgroundColor: '#FFECC7',
+  },
+  priorityLow: {
+    backgroundColor: '#DFF5E1',
+  },
+  priorityPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.black,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  tagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: colors.lightGray,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    color: colors.black,
+    fontWeight: '600',
   },
   deleteButton: {
     padding: 5,
