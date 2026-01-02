@@ -1,45 +1,26 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useContext } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { AuthProvider, AuthContext } from './src/contexts/AuthContext';
+import { TaskProvider } from './src/contexts/TaskContext';
+import AuthStack from './src/navigation/AuthStack';
+import AppStack from './src/navigation/AppStack';
+import Toast from 'react-native-toast-message';
+import { toastConfig } from './src/styles/toastConfig.tsx';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const Root = () => {
+  const { user } = useContext(AuthContext);
+  return user ? <AppStack /> : <AuthStack />;
+};
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
+export default function App() {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <AuthProvider>
+      <TaskProvider>
+        <NavigationContainer>
+          <Root />
+        </NavigationContainer>
+        <Toast config={toastConfig} />
+      </TaskProvider>
+    </AuthProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;

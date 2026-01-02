@@ -1,0 +1,111 @@
+import { StyleSheet } from 'react-native';
+
+export const colors = {
+  primary: '#4FC0B9',
+  secondary: '#9DD9D2',
+  white: '#FFFFFF',
+  black: '#000000',
+  gray: '#666666',
+  lightGray: '#F5F5F5',
+  error: '#FF4444',
+  background: '#E8F4F3',
+  text: '#333333',
+};
+
+export const commonStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.lightGray,
+  },
+  topCircleDecoration: {
+    position: 'absolute',
+    top: -100,
+    right: -100,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: colors.secondary,
+    opacity: 0.6,
+  },
+  topLeftCircle: {
+    position: 'absolute',
+    top: -50,
+    left: -50,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: colors.primary,
+    opacity: 0.3,
+  },
+  contentContainer: {
+    flex: 1,
+    paddingHorizontal: 30,
+    paddingTop: 60,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.black,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: colors.gray,
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  inputContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 15,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  input: {
+    fontSize: 15,
+    color: colors.black,
+  },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  linkText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 14,
+    color: colors.gray,
+  },
+  linkTextBold: {
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  illustrationContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  illustration: {
+    width: 250,
+    height: 250,
+    resizeMode: 'contain',
+  },
+});
